@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Story | Two Months Anniversary</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'accent-rose': '#ff4d6d',
+                        'accent-pink': '#ff758f',
+                        'accent-deep': '#590d22',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+    <style>
+        :root {
+            --accent-rose: #ff4d6d;
+            --accent-pink: #ff758f;
+            --bg-gradient: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.15);
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: white;
+            overflow-x: hidden;
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: all 0.3s ease;
+        }
+
+        .glass:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(255, 77, 109, 0.2);
+        }
+
+        .text-gradient {
+            background: linear-gradient(to right, var(--accent-rose), var(--accent-pink));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .page-transition {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--accent-rose); border-radius: 10px; }
+
+        canvas#hearts-canvas {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="hearts-canvas"></canvas>
+
+    <div class="relative z-10">
+        <!-- Navigation -->
+        <nav class="fixed top-0 left-0 right-0 z-50 glass m-4 border-none shadow-xl">
+            <div class="flex items-center justify-between px-6 py-4">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="heart" class="text-accent-rose animate-pulse fill-accent-rose"></i>
+                    <span class="font-serif font-bold text-xl tracking-wide">Our Story</span>
+                </div>
+                <div class="hidden md:flex items-center gap-8" id="desktop-nav">
+                    <!-- Nav items will be injected here -->
+                </div>
+                <button class="md:hidden text-white" id="menu-toggle">
+                    <i data-lucide="menu" id="menu-icon"></i>
+                </button>
+            </div>
+            <div class="hidden md:hidden overflow-hidden border-t border-white/10" id="mobile-menu">
+                <div class="flex flex-col gap-4 p-6" id="mobile-nav-items"></div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="pt-32 pb-10 container mx-auto px-4 max-w-6xl" id="main-view"></main>
+
+        <!-- Music Toggle -->
+        <div class="fixed bottom-6 right-6 z-50">
+            <button id="music-toggle" class="p-4 rounded-full glass border-none shadow-lg text-white/40 hover:scale-110 transition-all duration-500">
+                <i data-lucide="music" id="music-icon"></i>
+                <div id="playing-dot" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-accent-rose rounded-full animate-pulse"></div>
+            </button>
+        </div>
+    </div>
+
+    <audio id="bg-music" loop src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"></audio>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            currentTab: 'home',
+            isPlaying: false,
+            startDate: new Date('2026-02-04T00:00:00'),
+            tabs: [
+                { id: 'home', label: 'Home', icon: 'heart' },
+                { id: 'gallery', label: 'Gallery', icon: 'image' },
+                { id: 'timeline', label: 'Timeline', icon: 'calendar' },
+                { id: 'letter', label: 'Letter', icon: 'message-circle' },
+            ]
+        };
+
+        // --- Selectors ---
+        const mainView = document.getElementById('main-view');
+        const desktopNav = document.getElementById('desktop-nav');
+        const mobileNavItems = document.getElementById('mobile-nav-items');
+        const menuToggle = document.getElementById('menu-toggle');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const musicToggle = document.getElementById('music-toggle');
+        const audio = document.getElementById('bg-music');
+
+        // --- Render Functions ---
+        function renderNav() {
+            const navHtml = state.tabs.map(tab => `
+                <button onclick="switchTab('${tab.id}')" class="flex items-center gap-2 text-sm font-medium transition-colors ${state.currentTab === tab.id ? 'text-accent-rose' : 'text-white/60 hover:text-white'}">
+                    <i data-lucide="${tab.icon}" size="18"></i>
+                    ${tab.label}
+                </button>
+            `).join('');
+            
+            desktopNav.innerHTML = navHtml;
+            mobileNavItems.innerHTML = state.tabs.map(tab => `
+                <button onclick="switchTab('${tab.id}'); toggleMobileMenu()" class="flex items-center gap-4 text-lg font-medium transition-colors ${state.currentTab === tab.id ? 'text-accent-rose' : 'text-white/60'}">
+                    <i data-lucide="${tab.icon}"></i>
+                    ${tab.label}
+                </button>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function switchTab(tabId) {
+            state.currentTab = tabId;
+            renderNav();
+            renderView();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderView() {
+            mainView.innerHTML = `<div class="page-transition">${getViewContent(state.currentTab)}</div>`;
+            lucide.createIcons();
+            if (state.currentTab === 'home') startCounter();
+        }
+
+        function getViewContent(tabId) {
+            switch(tabId) {
+                case 'home': return renderHome();
+                case 'gallery': return renderGallery();
+                case 'timeline': return renderTimeline();
+                case 'letter': return renderLetter();
+                default: return '';
+            }
+        }
+
+        // --- Views ---
+        function renderHome() {
+            return `
+                <div class="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
+                    <div class="mb-8 relative inline-block">
+                        <i data-lucide="heart" size="120" class="text-accent-rose fill-accent-rose/20 animate-pulse"></i>
+                        <div class="absolute inset-0 flex items-center justify-center text-white font-bold text-2xl">2</div>
+                    </div>
+                    <h1 class="text-5xl md:text-8xl mb-2 text-gradient font-serif font-bold italic">My Sudu Bole</h1>
+                    <div class="flex items-center gap-3 text-white/50 text-sm uppercase tracking-[0.3em] mb-10">
+                        <div class="h-[1px] w-8 bg-white/20"></div>
+                        Our Forever Since Feb 4, 2026
+                        <div class="h-[1px] w-8 bg-white/20"></div>
+                    </div>
+                    <p class="text-xl md:text-2xl text-white/80 mb-12 max-w-2xl font-serif italic leading-relaxed">
+                        "Every single day with you is a gift I never knew I deserved. These first two months are just the beginning of our beautiful forever."
+                    </p>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 w-full max-w-4xl" id="counter-grid"></div>
+                    <button onclick="celebrate()" class="mt-12 px-8 py-4 glass text-lg font-bold text-white flex items-center gap-2 hover:bg-white/10">
+                        Celebrate Us <i data-lucide="heart" class="fill-current"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderGallery() {
+            const images = [
+                { url: './public/WhatsApp Image 2026-04-02 at 6.29.46 PM.jpeg', title: 'Sweet Moments' },
+                { url: './public/WhatsApp Image 2026-04-02 at 6.34.14 PM.jpeg', title: 'Our Happiness' },
+                { url: './public/WhatsApp Image 2026-04-02 at 6.39.01 PM.jpeg', title: 'Together Always' },
+                { url: './public/WhatsApp Image 2026-04-02 at 7.20.57 PM.jpeg', title: 'Beautiful Memories' },
+                { url: './public/WhatsApp Image 2026-04-02 at 7.23.58 PM.jpeg', title: 'My Everything' }
+            ];
+            return `
+                <div class="px-4 py-10">
+                    <h2 class="text-4xl md:text-5xl font-serif text-center mb-12 text-gradient">Our Gallery</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        ${images.map(img => `
+                            <div class="glass overflow-hidden cursor-pointer group relative aspect-[4/5] border-none" onclick="openLightbox('${img.url}')">
+                                <img src="${img.url}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                                <div class="absolute inset-0 bg-gradient-to-t from-accent-deep/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-8">
+                                    <p class="text-white font-serif text-2xl italic mb-2">${img.title}</p>
+                                    <div class="h-1 w-12 bg-accent-rose rounded-full transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-500"></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                <div id="lightbox" class="hidden fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer" onclick="closeLightbox()">
+                    <img id="lightbox-img" src="" class="max-w-full max-h-full rounded-lg shadow-2xl object-contain">
+                </div>
+            `;
+        }
+
+        function renderTimeline() {
+            const milestones = [
+                { date: 'Feb 4, 2026', title: 'The First Spark', desc: 'Our very first chat... and the moment I knew. I told you I loved you for the first time.', icon: 'message-square' },
+                { date: 'Feb 14, 2026', title: 'A Valentine’s Dream', desc: 'At 11:52 PM, you said those three magical words back to me. My heart finally found its home.', icon: 'heart' },
+                { date: 'Apr 1, 2026', title: 'The First Meet', desc: 'Finally meeting you in person. Seeing your smile for the first time was more than I ever imagined.', icon: 'users' }
+            ];
+            return `
+                <div class="py-10 relative">
+                    <h2 class="text-4xl md:text-5xl font-serif text-center mb-20 text-gradient">Our Journey</h2>
+                    <div class="absolute left-1/2 top-40 bottom-20 w-0.5 bg-accent-rose/30 hidden md:block"></div>
+                    ${milestones.map((m, i) => `
+                        <div class="flex flex-col md:flex-row items-center justify-center mb-16 relative w-full lg:max-w-4xl mx-auto ${i % 2 === 0 ? '' : 'md:flex-row-reverse'}">
+                            <div class="hidden md:flex w-[45%] ${i % 2 === 0 ? 'justify-end pr-12' : 'justify-start pl-12'}">
+                                <span class="text-2xl font-serif text-white/50">${m.date}</span>
+                            </div>
+                            <div class="w-12 h-12 rounded-full glass border-2 border-accent-rose flex items-center justify-center z-10 bg-black">
+                                <i data-lucide="${m.icon}" class="text-accent-rose w-6 h-6"></i>
+                            </div>
+                            <div class="w-full md:w-[45%] mt-8 md:mt-0 ${i % 2 === 0 ? 'md:pl-12' : 'md:pr-12 md:text-right'}">
+                                <div class="glass p-10 hover:shadow-[0_0_30px_rgba(255,117,143,0.3)] transition-all">
+                                    <span class="md:hidden text-accent-pink font-bold text-sm block mb-2">${m.date}</span>
+                                    <h3 class="text-3xl font-serif mb-4 text-white">${m.title}</h3>
+                                    <p class="text-white/70 text-lg leading-relaxed italic font-serif">"${m.desc}"</p>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderLetter() {
+            return `
+                <div class="min-h-[80vh] flex flex-col items-center justify-center py-10 px-4">
+                    <h2 class="text-4xl md:text-5xl font-serif text-center mb-16 text-gradient">A Message For You</h2>
+                    <div class="relative w-full max-w-2xl flex items-center justify-center" id="letter-container">
+                        <div onclick="openLetter()" class="w-full h-80 glass flex flex-col items-center justify-center cursor-pointer shadow-xl relative group overflow-hidden border-2 border-accent-rose/30">
+                            <i data-lucide="heart" size="60" class="text-accent-rose fill-accent-rose animate-bounce"></i>
+                            <p class="mt-6 text-white font-serif text-xl italic">From My Heart to Yours</p>
+                            <span class="mt-4 text-white/40 text-[10px] tracking-[0.3em] uppercase">Open Me</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- Helpers ---
+        function toggleMobileMenu() {
+            mobileMenu.classList.toggle('hidden');
+            const icon = document.getElementById('menu-icon');
+            icon.setAttribute('data-lucide', mobileMenu.classList.contains('hidden') ? 'menu' : 'x');
+            lucide.createIcons();
+        }
+
+        function startCounter() {
+            const grid = document.getElementById('counter-grid');
+            function update() {
+                const diff = new Date() - state.startDate;
+                const d = {
+                    Days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+                    Hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+                    Mins: Math.floor((diff / (1000 * 60)) % 60),
+                    Secs: Math.floor((diff / 1000) % 60)
+                };
+                grid.innerHTML = Object.entries(d).map(([k, v]) => `
+                    <div class="glass p-8 flex flex-col items-center justify-center relative overflow-hidden group">
+                        <span class="text-5xl md:text-6xl font-bold text-white mb-2 tracking-tighter">${v}</span>
+                        <span class="text-xs uppercase tracking-[0.2em] text-accent-pink font-bold">${k}</span>
+                    </div>
+                `).join('');
+            }
+            update();
+            const itv = setInterval(() => {
+                if(state.currentTab !== 'home') clearInterval(itv);
+                else update();
+            }, 1000);
+        }
+
+        function celebrate() {
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#ff4d6d', '#ff758f', '#ffb3c1'] });
+        }
+
+        function openLightbox(url) {
+            document.getElementById('lightbox-img').src = url;
+            document.getElementById('lightbox').classList.remove('hidden');
+        }
+        function closeLightbox() { document.getElementById('lightbox').classList.add('hidden'); }
+
+        function openLetter() {
+            document.getElementById('letter-container').innerHTML = `
+                <div class="w-full glass p-12 shadow-2xl relative overflow-hidden bg-white/10 animate-fadeIn">
+                    <h3 class="text-3xl font-serif text-accent-pink mb-8 italic">My Dearest Love,</h3>
+                    <p class="text-white/80 text-xl leading-relaxed mb-6 font-serif italic italic">"These past two months have been the most incredible chapter of my life. You are my happiness, my peace, and my greatest adventure."</p>
+                    <p class="text-white/80 text-xl leading-relaxed mb-6 font-serif italic italic">"I love you more than words can ever say. Happy Two Months, Princess."</p>
+                    <div class="mt-12 text-right">
+                        <p class="text-white/60 font-serif text-lg">Yours Forever,</p>
+                        <p class="text-2xl font-serif text-accent-rose font-bold">Your Love</p>
+                    </div>
+                    <button onclick="renderView()" class="absolute top-4 right-4 text-white/30 hover:text-white uppercase tracking-widest text-[10px]">Close</button>
+                </div>
+            `;
+        }
+
+        // --- Music ---
+        musicToggle.onclick = () => {
+            if (audio.paused) {
+                audio.play();
+                musicToggle.classList.add('text-accent-rose', 'ring-2', 'ring-accent-rose/50');
+                document.getElementById('playing-dot').classList.remove('hidden');
+                document.getElementById('music-icon').classList.add('animate-spin');
+            } else {
+                audio.pause();
+                musicToggle.classList.remove('text-accent-rose', 'ring-2', 'ring-accent-rose/50');
+                document.getElementById('playing-dot').classList.add('hidden');
+                document.getElementById('music-icon').classList.remove('animate-spin');
+            }
+        };
+
+        // --- Heart Animation ---
+        const canvas = document.getElementById('hearts-canvas');
+        const ctx = canvas.getContext('2d');
+        let hearts = [];
+        window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+        window.onresize();
+        class Heart {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height + Math.random() * 200;
+                this.size = Math.random() * 12 + 4;
+                this.speed = Math.random() * 0.8 + 0.3;
+                this.opacity = Math.random() * 0.3 + 0.1;
+                this.time = Math.random() * 100;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                ctx.fillStyle = '#ff4d6d';
+                ctx.translate(this.x + Math.sin(this.time) * 15, this.y);
+                ctx.beginPath();
+                const d = this.size;
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(-d/2, -d/2, -d, d/4, 0, d*0.75);
+                ctx.bezierCurveTo(d, d/4, d/2, -d/2, 0, 0);
+                ctx.fill();
+                ctx.restore();
+                this.y -= this.speed;
+                this.time += 0.03;
+                if (this.y < -50) this.reset();
+            }
+        }
+        for(let i=0; i<25; i++) hearts.push(new Heart());
+        function anim() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            hearts.forEach(h => h.draw());
+            requestAnimationFrame(anim);
+        }
+        anim();
+
+        // --- Init ---
+        menuToggle.onclick = toggleMobileMenu;
+        renderNav();
+        renderView();
+    </script>
+</body>
+</html>
